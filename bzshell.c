@@ -834,10 +834,8 @@ int buildin_cd(t_exec *data, t_map_list *env)
 //// ------- echo ------------------------------------
 int buildin_echo(char **cmd)
 {
-	int count;
 	int j;
 	int no_newline;
-	char *temp;
 
 	j = 1;
 	no_newline = 0;
@@ -959,13 +957,10 @@ int is_env_dup(t_map_list *env, char **data, int condition)
 
 int buildin_export(t_map_list *env, char **cmd)
 {
-	char *buf;
-	char *ptr;
 	char **res;
 	size_t temp;
 	size_t i;
 	size_t j;
-	size_t k;
 	int status;
 	t_map_list *env_temp;
 	char *cmd_temp;
@@ -1071,7 +1066,6 @@ int buildin_env(t_map_list *env, char **cmd)
 void ft_node_cmp_remove(t_map_list **env, char *str)
 {
 	t_map_list *temp;
-	t_map_list *remove_pos;
 	if (*env == NULL)
 		return;
 	if (strcmp((*env)->key, str) == 0)
@@ -1174,7 +1168,6 @@ long long ft_atoll(char *s)
 
 int handle_over_llong(char *s)
 {
-	int i;
 	char *llong;
 
 	llong = "9223372036854775808";
@@ -1244,8 +1237,6 @@ char **get_cmd_arr(t_list *cmd, t_map_list *env, int status);
 
 void run_buildin_cmd(t_exec *data, int *status, t_map_list **env, char **cmd)
 {
-	int i = 0;
-
 	if (strcmp("echo", cmd[0]) == 0)
 		*status = buildin_echo(cmd);
 	if (strcmp("cd", cmd[0]) == 0)
@@ -1658,7 +1649,7 @@ char *add_heredoc(char *eof, int *res_status)
 	int line_count = 0;
 	size_t total_length = 0;
 	pid_t pid;
-	t_control_sig *sig;
+
 	if (pipe((int *)&pipe_fd) == -1)
 	{
 		perror("Pipe creation failed");
@@ -1790,7 +1781,6 @@ void replace_hered_str(char **str, t_map_list *env, int status)
 	size_t len;
 	t_list *temp;
 	char *res;
-	char *str_temp;
 
 	len = 0; /// one line of hell
 	if (*str == 0 || **str == 0 || is_parse_able(*str) == 0)
@@ -1962,7 +1952,6 @@ int check_redir_valid_exec(t_exec *node)
 int check_extra_redir(t_tok_list *list)
 {
 	int i;
-	int error;
 	t_tok_list *temp_list;
 
 	temp_list = list;
@@ -2251,7 +2240,7 @@ t_map_list *copy_map_list(t_map_list *head)
 	tail = NULL;
 	current = head;
 	new_node = NULL;
-	int i = 0;
+
 	while (current != NULL)
 	{
 		new_node = ft_new_mapnode(current->key, current->value);
@@ -2261,7 +2250,6 @@ t_map_list *copy_map_list(t_map_list *head)
 			tail->next = new_node;
 		tail = new_node;
 		current = current->next;
-		i++;
 	}
 	return new_head;
 }
@@ -2289,12 +2277,8 @@ int run_redir(t_exec *data, t_map_list *env, int status)
 	int f_redir;
 	int b_redir;
 	char *file_name;
-	int size;
-	int i;
 	t_redirect *redir;
 
-	i = 0;
-	size = 0;
 	file_name = NULL;
 	redir = data->redir;
 	if (redir == NULL)
@@ -2500,7 +2484,6 @@ int run_redir(t_exec *data, t_map_list *env, int status)
 				close(pipe_fd[0]);
 			}
 		}
-		i++;
 		free(file_name);
 		file_name = NULL;
 		redir = redir->next;
@@ -2620,7 +2603,6 @@ int get_status(int status);
 
 int execve_in_child(int *return_status, char **cmd_path, char **env_temp)
 {
-	int status;
 	pid_t pid;
 
 	pid = fork();
@@ -2631,10 +2613,8 @@ int execve_in_child(int *return_status, char **cmd_path, char **env_temp)
 	}
 	else if (pid == 0)
 	{
-		int i = 0;
 		if (execve(cmd_path[0], cmd_path, env_temp) == -1)
 		{
-			int i = 0;
 			ft_free_chrarr(cmd_path);
 			perror("minishell exec child");
 		}
@@ -2882,7 +2862,6 @@ void start_pipe(t_exec *data, int *status, t_map_list *env)
 
 int is_parse_able(char *s)
 {
-	int count;
 	int status;
 	bool in_s_quote;
 	bool in_d_quote;
@@ -3182,7 +3161,6 @@ void replace_str(char **str, t_map_list *env, int status)
 	size_t len;
 	t_list *temp;
 	char *res;
-	char *str_temp;
 
 	len = 0;
 	if (*str == 0 || **str == 0 || is_parse_able(*str) == 0)
@@ -3259,8 +3237,6 @@ void execute_recursive(t_exec *cmd, int *status, t_map_list **env, int child)
 		temp2 = copy_map_list(*env);
 		if (cmd->run_condition == PIPE)
 		{
-			int new_status;
-
 			pipe(pipefd);
 			parent[0] = fork();
 			if (parent[0] == 0)
@@ -3407,26 +3383,26 @@ int run_line(char *raw_data, t_map_list **env, int *g_status, t_exec **cmd)
 	return *g_status;
 }
 
-// void print_header(t_map_list *env)
-// {
-// 	printf("\n"
-// 		   " \033[34;5m███╗   ███╗██╗███╗   ██╗██╗\033[0m███████╗██╗  "
-// 		   "██╗███████╗██╗     ██╗     \n"
-// 		   " \033[34;5m████╗ ████║██║████╗  ██║██║\033[0m██╔════╝██║  "
-// 		   "██║██╔════╝██║     ██║     \n"
-// 		   " \033[34;5m██╔████╔██║██║██╔██╗ "
-// 		   "██║██║\033[0m███████╗███████║█████╗  ██║     ██║     \n"
-// 		   " \033[34;5m██║╚██╔╝██║██║██║╚██╗██║██║\033["
-// 		   "0m╚════██║██╔══██║██╔══╝  ██║     ██║     \n"
-// 		   " \033[34;5m██║ ╚═╝ ██║██║██║ ╚████║██║\033[0m███████║██║  "
-// 		   "██║███████╗███████╗███████╗\n"
-// 		   " \033[34;5m╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝\033[0m╚══════╝╚═╝  "
-// 		   "╚═╝╚══════╝╚══════╝╚══════╝\n\n");
-// 	printf("The default interactive shell is now on path \033[35;6m%s\033[0m.\n"
-// 		   "\033[31;5mBad os detected\033[0m, For more details, please visit "
-// 		   "\033[0;33mhttps://www.youtube.com/watch?v=Bu8bH2P37kY\033[0m.\n\n",
-// 		   getenv("SHELL"));
-// }
+void print_header()
+{
+	printf("\n"
+		   " \033[34;5m███╗   ███╗██╗███╗   ██╗██╗\033[0m███████╗██╗  "
+		   "██╗███████╗██╗     ██╗     \n"
+		   " \033[34;5m████╗ ████║██║████╗  ██║██║\033[0m██╔════╝██║  "
+		   "██║██╔════╝██║     ██║     \n"
+		   " \033[34;5m██╔████╔██║██║██╔██╗ "
+		   "██║██║\033[0m███████╗███████║█████╗  ██║     ██║     \n"
+		   " \033[34;5m██║╚██╔╝██║██║██║╚██╗██║██║\033["
+		   "0m╚════██║██╔══██║██╔══╝  ██║     ██║     \n"
+		   " \033[34;5m██║ ╚═╝ ██║██║██║ ╚████║██║\033[0m███████║██║  "
+		   "██║███████╗███████╗███████╗\n"
+		   " \033[34;5m╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝\033[0m╚══════╝╚═╝  "
+		   "╚═╝╚══════╝╚══════╝╚══════╝\n\n");
+	printf("The default interactive shell is now on path \033[35;6m%s\033[0m.\n"
+		   "\033[31;5mBad os detected\033[0m, For more details, please visit "
+		   "\033[0;33mhttps://www.youtube.com/watch?v=Bu8bH2P37kY\033[0m.\n\n",
+		   getenv("SHELL"));
+}
 
 void ft_free_map_list(t_map_list *env)
 {
@@ -3453,7 +3429,6 @@ int minishell(t_map_list *env)
 	int g_status;
 	char *input;
 	t_exec *head;
-	t_control_sig sig;
 
 	head = NULL;
 	g_status = 0;
@@ -3508,8 +3483,6 @@ int minishell(t_map_list *env)
 void setup(t_map_list *env)
 {
 	char *temp[6];
-	char *args[3];
-	int new;
 	char *shlvl;
 	char *lvl;
 
@@ -3519,7 +3492,6 @@ void setup(t_map_list *env)
 	shlvl = calloc(strlen(lvl) + 7, 1);
 	strcat(shlvl, "SHLVL=");
 	strcat(shlvl, lvl);
-	new = 0;
 	temp[0] = "export";
 	temp[1] = shlvl;
 	temp[2] = "CLICOLOR=1";
@@ -3535,6 +3507,7 @@ int main(int ac, char *av[], char *envp[])
 {
 	t_map_list *env;
 
+	print_header();
 	env = get_env_list(envp);
 	setup(env);
 	return (minishell(env));
