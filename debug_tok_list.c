@@ -9,7 +9,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 #include <errno.h>
@@ -178,17 +177,6 @@ void sigint_handler(int signum, siginfo_t *info, void *ptr)
 		sigint_in = 1;
 		close(pipe_fds->write_fd);
 		// exit(EXIT_FAILURE);
-	}
-}
-
-void new_sigint_handler(int signum, siginfo_t *info, void *ptr)
-{
-	(void)info;
-	(void)ptr;
-	if (signum == SIGINT)
-	{
-		printf("\n");
-		sigint_in = 1;
 	}
 }
 
@@ -418,10 +406,7 @@ char *manage_string_space(char *src)
 	free(src);
 	src = NULL;
 	if (manage_string_space_return(quote))
-	{
-		free(res);
 		return (NULL);
-	}
 	return (res);
 }
 
@@ -590,38 +575,14 @@ int check_paren_valid(char *str)
 
 void recursive_token(char *src, t_tok_list **branch, int root_call, char *temp);
 
-t_tok_list *ft_toklist_last(t_tok_list *head)
-{
-	if (head == NULL)
-		return NULL;
-	else
-	{
-		while (head->next)
-			head = head->next;
-		return (head);
-	}
-}
-
-t_tok_list *ft_toklist_addlast(t_tok_list *head)
-{
-	if (head == NULL)
-		head = ft_new_toklist();
-	else
-	{
-		while (head->next)
-			head = head->next;
-		head->next =ft_new_toklist();
-	}
-}
 void recursive_token_paren_helper(char **src, int *token, t_tok_list **list)
 {
 	char *buf;
 	char *buf_ptr;
 	int count;
-	char	*temp;
+	char *temp;
 
-	// ft_toklist_addlast(*list);
-	// *list = ft_toklist_last(*list);
+	// *list = ft_new_toklist();
 	*token = PARENT_TYPE;
 	count = 1;
 	*src += 1;
@@ -806,19 +767,25 @@ void ft_free_tok_list(t_tok_list *head)
 		return ;
 	if (head->child)
 	{
+		printf("child -->\n");
 		ft_free_tok_list(head->child);
 		head->child = NULL;
+		printf("finish child -->\n");
 	}
 	if (head->next)
 	{
+		printf("next -->\n");
 		ft_free_tok_list(head->next);
 		head->next = NULL;
+		printf("finish next -->\n");
 	}
 	if (head->str)
 	{
+		printf("del __%s__\n", head->str);
 		free(head->str);
 		head->str = NULL;
 	}
+	printf("struct\n");
 	free(head);
 	head = NULL;
 }
@@ -898,31 +865,9 @@ t_tok_list *group_per_exec(char *src)
 
 // ------------------------------build in -----------------------
 
-int buildin_export(t_map_list *env, char **cmd, int status, int pscall);
+int buildin_export(t_map_list *env, char **cmd, int status, int condition);
 
 //// ------------cd--------------
-
-void	update_pwd_str(char *resolved_path, t_map_list *env)
-{
-	char *temp[4];
-	char *str_temp;
-	char *new_pwd;
-
-	str_temp = calloc(strlen(resolved_path) + 5, 1);
-	new_pwd = calloc(strlen(resolved_path) + 6, 1);
-	strcat(str_temp, "PWD=");
-	strcat(str_temp, resolved_path);
-	strcat(new_pwd, "_PWD=");
-	strcat(new_pwd, resolved_path);
-	temp[0] = "export";
-	temp[1] = str_temp;
-	temp[2] = new_pwd;
-	temp[3] = NULL;
-	buildin_export(env, temp, 0, 1);
-	free(str_temp);
-	free(new_pwd);
-}
-
 char	*resolve_absolute_path(char *path, t_map_list *env, char *str_temp)
 {
 	char cwd[800];
@@ -930,14 +875,19 @@ char	*resolve_absolute_path(char *path, t_map_list *env, char *str_temp)
 	char *resolved_path;
 
 	resolved_path = strdup(path);
-	update_pwd_str(resolved_path, env);
+	temp[0] = "export";
+	str_temp = calloc(strlen(resolved_path) + 5, 1);
+	strcat(str_temp, "PWD=");
+	strcat(str_temp, resolved_path);
+	temp[1] = str_temp;
+	temp[2] = NULL;
+	buildin_export(env, temp, 0, 0);
+	free(str_temp);
 	if (getcwd(cwd, sizeof(cwd)) == NULL)
 		return (resolved_path);
 	str_temp = calloc(strlen(cwd) + 8, 1);
 	strcat(str_temp, "OLDPWD=");
 	strcat(str_temp, cwd);
-	temp[0] = "export";
-	temp[2] = NULL;
 	temp[1] = str_temp;
 	buildin_export(env, temp, 0, 0);
 	free(str_temp);
@@ -950,7 +900,6 @@ char	*ft_getcwd_error()
 		   "access parent directories");
 	return (NULL);
 }
-
 
 
 char *ft_getenv(char *s, t_map_list *env, int status);  //:FIX:
@@ -966,13 +915,17 @@ void	export_pwd_oldpwd(char *res_path, t_map_list *env, char *dir_path, char *ta
 	str_temp = (char *)calloc(strlen(pwd_temp) + 8, 1);
 	strcat(str_temp, "OLDPWD=");
 	strcat(str_temp, pwd_temp);
-	free(pwd_temp);
 	temp[1] = str_temp;
 	buildin_export(env, temp, 0, 0);
 	free(str_temp);
-	update_pwd_str(res_path, env);
 	// if (strcmp(pwd_temp, dir_path) == 0)
 	// 	return ;
+	str_temp = (char *)calloc(strlen(res_path) + 5, 1);
+	strcat(str_temp, "PWD=");
+	strcat(str_temp, res_path);
+	temp[1] = str_temp;
+	buildin_export(env, temp, 0, 0);
+	free(str_temp);
 }
 
 char	*resolve_relative_path(char *path, t_map_list *env, char *str_temp)  //:FIX:
@@ -1048,7 +1001,6 @@ char *resolve_up_path(char *path, t_map_list *env)
 	res = strndup(temp, ptr - temp);
 
 	export_pwd_oldpwd(res, env, cwd, path);
-	free(temp);
 	// chdir(res);
 	return (res);
 }
@@ -1068,64 +1020,17 @@ char *resolve_path(char *path, t_map_list *env)
 // ------------------------- fin
 char *ft_getenv(char *s, t_map_list *env, int status);
 
-char *update_oldpwd_str(t_map_list *env)
+int	back_to_old_pwd(char **str_temp, char **res_path ,t_map_list *env)
 {
-	char *old_temp;
-	char *old_new;
-
-	old_temp = ft_getenv("_PWD", env, 0);
-	old_new = calloc(strlen(old_temp) + 8, 1);
-	strcat(old_new, "OLDPWD=");
-	strcat(old_new, old_temp);
-	free(old_temp);
-	return (old_new);
-}
-
-void	ps_export_back_old_pwd(char *old_path, t_map_list *env)
-{
-	char *temp[5];
-	char *new;
-	char	*ps_new;
-	char	*old_new;
-
-	new = calloc(strlen(old_path) + 5, 1);
-	ps_new = calloc(strlen(old_path) + 6, 1);
-	old_new = update_oldpwd_str(env);
-	strcat(new, "PWD=");
-	strcat(new, old_path);
-	strcat(ps_new, "_PWD=");
-	strcat(ps_new, old_path);
-	temp[0] = "export";
-	temp[4] = NULL;
-	temp[1] = new;
-	temp[2] = ps_new;
-	temp[3] = old_new;
-	buildin_export(env, temp, 0, 1);
-	free(new);
-	free(ps_new);
-	free(old_new);
-	new = NULL;
-	ps_new = NULL;
-	old_new = NULL;
-}
-
-int	back_to_old_pwd(int *back, char **res_path ,t_map_list *env)
-{
-	char *str_temp;
-
-	str_temp = ft_getenv("OLDPWD", env, 0);
-	if (str_temp == 0 || *str_temp == 0)
+	*str_temp = ft_getenv("OLDPWD", env, 0);
+	if (*str_temp == 0 || **str_temp == 0)
 	{
-		if (str_temp)
-			free(str_temp);
+		free(*str_temp);
 		write(2, "minishell: cd: OLDPWD not set\n", 30);
 		return (1);
 	}
-	printf("%s\n", str_temp);
-	ps_export_back_old_pwd(str_temp, env);
-	*back = 1;
-	*res_path = strdup(str_temp);
-	free(str_temp);
+	*res_path = strdup(*str_temp);
+	free(*str_temp);
 	return (0);
 }
 
@@ -1135,7 +1040,6 @@ int	buildin_cd_manage_return(char **res_path, t_exec *data)
 		return (0);
 	if (chdir(*res_path) != 0)
 	{
-		printf("%s\n", *res_path);
 		free(*res_path);
 		*res_path = NULL;
 		write(2, "minishell: cd: ", 15);
@@ -1147,11 +1051,9 @@ int	buildin_cd_manage_return(char **res_path, t_exec *data)
 	return (0);
 }
 
-int	ft_cd_root_dir_error(char *home)
+int	ft_cd_root_dir_error()
 {
-	if (home)
-		free(home);
-	write(2, "minishell: cd: HOME not set\n", 28);
+	write(2, "minishell: cd: can't go back to root dir\n", 41);
 	return (0);
 }
 
@@ -1167,48 +1069,32 @@ int	ft_cd_getcwd_error(char **s)
 
 char	*buildin_cd_add_pwd(t_map_list *env)
 {
-	char	*temp[4];
+	char	*temp[3];
 	char	*str_temp;
 	char	*res_temp;
-	char	*hidden_pwd;
 
 	temp[0] = "export";
-	temp[3] = NULL;
 	str_temp = ft_getenv("HOME", env, 0);
 	res_temp = calloc(strlen(str_temp) + 5, 1);
-	hidden_pwd = calloc(strlen(str_temp) + 6, 1);
 	strcat(res_temp, "PWD=");
 	strcat(res_temp, str_temp);
-	strcat(hidden_pwd, "_PWD=");
-	strcat(hidden_pwd, str_temp);
 	free(str_temp);
+	temp[2] = NULL;
 	temp[1] = res_temp;
-	temp[2] = hidden_pwd;
-	buildin_export(env, temp, 0, 1);
+	buildin_export(env, temp, 0, 0);
 	return (res_temp);
 }
 
-int buildin_cd(t_exec *data, t_map_list *env)
+int buildin_cd(t_exec *data, t_map_list *env, char *res_path, char *str_temp)
 {
 	char *temp[3];
 	char cwd[800];
 	int	error;
-	char *res_path;
-	int cd_back;
 
-	// ---- new -- 
-	char *home = NULL;;
-
-	// --------------
-	cd_back = 0;
 	if (data->cmd->next == 0 || data->cmd->next->s == 0 || data->cmd->next->s[0] == 0)
 	{
-		home = ft_getenv("HOME", env, 0);
-		if (home == NULL)
-			return (1);
-		if (chdir(home) != 0)
-			return (ft_cd_root_dir_error(home));
-		free(home);
+		if (chdir(getenv("HOME")) != 0)
+			return (ft_cd_root_dir_error());
 		temp[1] = buildin_cd_add_pwd(env);
 		if (getcwd(cwd, sizeof(cwd)) == NULL)
 			return (ft_cd_getcwd_error(&temp[1]));
@@ -1217,9 +1103,9 @@ int buildin_cd(t_exec *data, t_map_list *env)
 		return (0);
 	}
 	else if (data->cmd->next && data->cmd->next->s && data->cmd->next->s[0] == '-' &&
-			 data->cmd->next->s[1] == 0 && back_to_old_pwd(&cd_back, &res_path, env) == 1)
+			 data->cmd->next->s[1] == 0 && back_to_old_pwd(&str_temp, &res_path, env) == 1)
 			return (1);
-	else if (cd_back != 1)
+	else
 		res_path = resolve_path(data->cmd->next->s, env);
 	return (buildin_cd_manage_return(&res_path, data));
 }
@@ -1257,7 +1143,7 @@ int buildin_pwd(t_map_list *head)
 	char cwd[400];
 	char	*pwd;
 
-	pwd = ft_getenv("_PWD", head, 0);
+	pwd = ft_getenv("PWD", head, 0);
 	if (pwd == NULL)
 	{
 		getcwd(cwd, sizeof(cwd));
@@ -1327,8 +1213,7 @@ void print_export(t_map_list *env)
 {
 	while (env)
 	{
-		if (env->key && strcmp(env->key, "_PWD"))
-			printf("declare -x %s=\"%s\"\n", env->key, env->value);
+		printf("declare -x %s=\"%s\"\n", env->key, env->value);
 		env = env->next;
 	}
 }
@@ -1434,26 +1319,20 @@ void	buildin_export_error(char **cmd, int index, int *status)
 	*status = 1;
 }
 
-void	setup_buildin_export(int *condition, size_t *j, char **res)
-{
-	res = NULL;
-	*j = 1;
-	*condition = 0;
-}
 
-int buildin_export(t_map_list *env, char **cmd, int status, int pscall)
+int buildin_export(t_map_list *env, char **cmd, int status, int condition)
 {
-	char **res = NULL;
+	char **res;
 	size_t j;
-	int	condition;
 
-	setup_buildin_export(&condition, &j, res);
+	res = NULL;
 	if (cmd[1] == 0)
 		return (print_export(env), EXIT_SUCCESS);
+	j = 1;
 	while (cmd[j])
 	{
 		condition = check_export_valid(cmd[j]);
-		if ((condition && strstr(cmd[j], "_PWD") == 0)|| (strstr(cmd[j], "_PWD") && pscall == 1))
+		if (condition)
 		{
 			if ((cmd[j] == NULL && cmd[j] == 0) ||(strchr(cmd[j], '=') == NULL))
 				break;
@@ -1486,8 +1365,7 @@ int buildin_env(t_map_list *env, char **cmd)
 	}
 	while (env)
 	{
-		if (strcmp(env->key, "_PWD"))
-			printf("%s=%s\n", env->key, env->value);
+		printf("%s=%s\n", env->key, env->value);
 		env = env->next;
 	}
 	return (EXIT_SUCCESS);
@@ -1539,8 +1417,6 @@ int buildin_unset(t_map_list **env, char **cmd)
 	status = 0;
 	while (cmd[i])
 	{
-		if (strstr(cmd[i], "_PWD"))
-			return (status);
 		if (cmd[i][0] && check_valid_unset(cmd[i]))
 			ft_node_cmp_remove(env, cmd[i]);
 		else
@@ -1695,7 +1571,7 @@ void run_buildin_cmd(t_exec *data, int *status, t_map_list **env, char **cmd)
 	if (strcmp("echo", cmd[0]) == 0)
 		*status = buildin_echo(cmd);
 	if (strcmp("cd", cmd[0]) == 0)
-		*status = buildin_cd(data, *env);
+		*status = buildin_cd(data, *env, 0, 0);
 	else if (strcmp("pwd", cmd[0]) == 0)
 		*status = buildin_pwd(*env);
 	else if (strcmp("export", cmd[0]) == 0)
@@ -1975,9 +1851,11 @@ void get_exec_data(t_tok_list *data, t_exec **head)
 	{
 		if (data->token == PARENT_TYPE)
 		{
+			// printf("make child\n");
 			get_exec_data(data->child, &temp->child);
 			if (data->next && data->next->token == PARENT_TYPE)
 			{
+				// printf("make child\n");
 				get_exec_data(data->next, &temp->next);
 				return ;
 			}
@@ -2122,7 +2000,7 @@ void	heredoc_input_process(t_pipe *pipe_fd, char *eof)
 	while (sigint_in == 0)
 	{
 		input = readline("heredoc> ");
-		if (sigint_in == 1 || input == 0 || strcmp(input, eof) == 0)
+		if (input == 0 || strcmp(input, eof) == 0 || sigint_in == 1)
 		{
 			free(input);
 			break;
@@ -2145,8 +2023,8 @@ int	heredoc_parent_handle_error(t_pipe *pipe_fd, char *eof, pid_t pid, int *res_
 {
 		int status;
 		close((*pipe_fd).write_fd);
-		sig_ignore();
 		waitpid(pid, &status, 0);
+		sig_ignore();
 		if (WIFSIGNALED(status))
 		{
 			close((*pipe_fd).read_fd);
@@ -2176,8 +2054,6 @@ char	*heredoc_set_data(t_pipe *pipe_fd, int line_count, size_t total_length)
 	int	i;
 
 	result = 0;
-	if (sigint_in == 1 || sigint_in == 2)
-		return (NULL);
 	byte_read = read((*pipe_fd).read_fd, buffer, sizeof(buffer));
 	while (byte_read > 0)
 	{
@@ -2202,7 +2078,7 @@ char *add_heredoc(char *eof, int *res_status)
 
 	if (pipe((int *)&pipe_fd) == -1)
 	{
-		perror("sorry. pipe error");
+		perror("pipe create error");
 		exit(EXIT_FAILURE);
 	}
 	pid = fork();
@@ -2223,6 +2099,7 @@ int is_parse_able(char *s);
 
 char *replace_addback(char *str, size_t *index, t_map_list *env,
 					 int status);
+
 
 void	setup_search_replace(bool *s_quote, bool *d_quote, size_t *i)
 {
@@ -2271,13 +2148,9 @@ int	loop_search_replace(char **str, t_map_list *env, int status, t_list **res)
 				 strchr("\"\'=()", str[0][i + 1]) == 0)
 		{
 			temp = strndup(*str, i);
+			ft_new_list_addback(res, temp);
 			if (temp)
-			{
-				ft_new_list_addback(res, temp);
-				if (temp)
-					free(temp);
-				temp = NULL;
-			}
+				free(temp);
 			temp = replace_addback(*str, &i, env, status);
 			update_and_free(res, &temp, str, &i);
 		}
@@ -2319,14 +2192,11 @@ int	setup_replace_hered_str(char **str, t_map_list *env, int status, t_list **he
 	return (0);
 }
 
-void	ft_free_list(t_list *head);
-
 void replace_hered_str(char **str, t_map_list *env, int status)
 {
 	t_list *head;
 	size_t len;
 	t_list *temp;
-	t_list *for_free;
 	char *res;
 	char *str_temp;
 
@@ -2341,14 +2211,12 @@ void replace_hered_str(char **str, t_map_list *env, int status)
 		temp = temp->next;
 	}
 	res = calloc(len + 1, 1);
-	for_free = head;
 	while (head)
 	{
 		if (head->s && head->s[0])
 			strcat(res, head->s);
 		head = head->next;
 	}
-	ft_free_list(for_free);
 	free(*str);
 	*str = res;
 }
@@ -2400,9 +2268,7 @@ int	get_heredoc_loop(t_exec *exec_temp, int *status, t_map_list *env)
 				eof = strdup(temp->back_fd);
 			else
 				get_eof_from_next_args(exec_temp, &eof);
-			if (sigint_in != 0)
-				return (1);
-			else if (check_parsing_eof(&eof, &temp, status, env) == 1)
+			if (check_parsing_eof(&eof, &temp, status, env) == 1)
 				return (1);
 		}
 		temp = temp->next;
@@ -2421,10 +2287,7 @@ int get_heredoc(t_exec *head, t_map_list *env, int *status)
 	while (exec_temp)
 	{
 		if (exec_temp->child)
-		{
-			if (get_heredoc(exec_temp->child, env, status) == 1)
-				return (1);
-		}
+			get_heredoc(exec_temp->child, env, status);
 		if (exec_temp->redir)
 		{
 			if (get_heredoc_loop(exec_temp, status, env) == 1)
@@ -2634,10 +2497,10 @@ int check_extra_redir_errsix(t_tok_list *temp_list, t_tok_list *list)
 	temp_list = NULL;
 	write(2, "minishell : syntax error near unexpected token `",
 		  48);
-	// if (list->next && list->next->str)
-	// 	write(2, list->next->str, strlen(list->next->str));
-	// else
-	write(2, "newline", 7);
+	if (list->next && list->next->str)
+		write(2, list->next->str, strlen(list->next->str));
+	else
+		write(2, "newline", 7);
 	write(2, "`\n", 2);
 	return (0);
 }
@@ -2887,16 +2750,12 @@ void ft_free_exec(t_exec *head)
 
 int	check_raw_str(char *str)
 {
-	char *temp;
-
-	temp = str;
-	if (str == NULL || check_redir_valid(str) == 0 || check_paren_valid(str) == 0)
-	{
-		if (str)
-			free(str);
-		str = NULL;
+	if (str == NULL)
 		return (0);
-	}
+	if (check_redir_valid(str) == 0)
+		return (0);
+	if (check_paren_valid(str) == 0)
+		return (0);
 	return (1);
 }
 
@@ -2930,15 +2789,10 @@ int	check_token_list(t_tok_list *list)
 
 int	check_addition_exec(t_exec *head)
 {
-
-	if (check_redir_valid_exec(head) == 0 || check_child_valid_exec(head) == 0)
-	{
-		if (head)
-			ft_free_exec(head);
-		head = NULL;
+	if (check_redir_valid_exec(head) == 0)
 		return (0);
-
-	}
+	if (check_child_valid_exec(head) == 0)
+		return (0);
 	return (1);
 }
 
@@ -2954,17 +2808,15 @@ t_exec *parser(char *raw_data, t_map_list *env, int *status)
 		return (NULL);
 	list = group_per_exec(new);
 	if (check_token_list(list) == 0)
-	{
 		return (NULL);
-	}
+	ft_free_tok_list(list);
+	return NULL;
 	get_exec_data(list, &head);
 	ft_free_tok_list(list);
 	list = NULL;
-	if (get_heredoc(head, env, status) == 1)
+	if (get_heredoc(head, env, status))
 	{
 		*status = 1;
-		ft_free_exec(head);
-		head = NULL;
 		return (NULL);
 	}
 	if (check_addition_exec(head) == 0)
@@ -3018,7 +2870,7 @@ int ft_redir_len(t_redirect *head)
 	return (i);
 }
 
-void execute_recursive(t_exec *cmd, int *status, t_map_list **env, int child, int skip);
+void execute_recursive(t_exec *cmd, int *status, t_map_list **env, int child);
 
 int	ft_dup2(int f_redir, int b_redir)
 {
@@ -3032,9 +2884,8 @@ int	ft_dup2(int f_redir, int b_redir)
 
 //----------- run_redir
 
-void	setup_redir(t_redirect *redir, int *f_redir, int *b_redir, int *check)
+void	setup_redir(t_redirect *redir, int *f_redir, int *b_redir)
 {
-	*check = 0;
 	if (redir->front_fd)
 	{
 		if (redir->front_fd[0] == '&' && redir->front_fd[1] == 0)
@@ -3052,16 +2903,12 @@ void	setup_redir(t_redirect *redir, int *f_redir, int *b_redir, int *check)
 		*f_redir = STDIN_FILENO;
 		*b_redir = STDIN_FILENO;
 	}
-	if (redir->back_fd && redir->back_fd[0] == '&' && redir->back_fd[1] &&
-		strchr("0123456789", redir->back_fd[1]) && redir->back_fd[2] == 0)
-		*check = 1;
 }
 
-void	add_case_ampersand(t_redirect *redir, int *b_redir, char **file_name, int *check)
+void	add_case_ampersand(t_redirect *redir, int *b_redir, char **file_name)
 {
 	if (redir->back_fd[1] && ft_strnum(redir->back_fd + 1))
 	{
-		*check = 1;
 		*b_redir = atoi(redir->back_fd + 1);
 	}
 	else
@@ -3070,29 +2917,26 @@ void	add_case_ampersand(t_redirect *redir, int *b_redir, char **file_name, int *
 	}
 }
 
-int	bad_filename(t_redirect *redir, char **file_name)
+int	bad_dollar_sign_usage(t_redirect *redir)
 {
-	if (*file_name == NULL || **file_name == 0)
+	if (redir->back_fd[0] == '$' && redir->back_fd[1])
 	{
-		if (*file_name)
-			free(*file_name);
-		write(2, "minishell: ", 11);
-		write(2, " ", 1);
+		write(2, "bash: ", 6);
+		write(2, redir->back_fd, strlen(redir->back_fd));
 		write(2, ": ambiguous redirect\n", 21);
+		return (1);
 		return (EXIT_FAILURE);
 	}
 	return (0);
 }
 
-void	unquote_and_add_target_fd_ref(t_redirect *redir, int *b_redir, char **file_name, int *check)
+void	unquote_and_add_target_fd_ref(t_redirect *redir, int *b_redir, char **file_name)
 {
 	unquote_realloc_str(&(redir->back_fd));
 	if (redir->back_fd[0] == '&')
-		add_case_ampersand(redir, b_redir, file_name, check);
+		add_case_ampersand(redir, b_redir, file_name);
 	else
-	{
 		*file_name = strdup(redir->back_fd);
-	}
 }
 
 void	getfd_ref_from_next_args(t_exec **data, t_map_list *env, int *status, char **file_name)
@@ -3116,12 +2960,9 @@ int	run_redir_in(char *file_name, int f_redir)
 			free(file_name);
 			return (1);
 		}
+		free(file_name);
 		if (ft_dup2(STDIN_FILENO, fd) == 1)
-		{
-			if (file_name)
-				free(file_name);
 			return 1;
-		}
 		close(fd);
 	}
 	else
@@ -3141,58 +2982,19 @@ int	check_file_avaiable(char *file_name )
 		write(2, ": No such file or directory\n", 29);
 		if (file_name)
 			free(file_name);
-		file_name = NULL;
 		
 		return (1);
 	}
 	else if (access(file_name, W_OK) == -1)
 	{
 		write(2, "minishell: ", 11);
-		if (file_name)
-			write(2, file_name, strlen(file_name));
+		write(2, file_name, strlen(file_name));
 		write(2, ": Permission denied\n", 20);
 		if (file_name)
 			free(file_name);
 		return (1);
 	}
 	return (0);
-}
-
-int	redir_err_write_err(char *file_name)
-{
-	write(2, "minishell: ", 11);
-	if (file_name)
-		write(2, file_name, strlen(file_name));
-	write(2, ": Permission denied\n", 20);
-}
-
-int	extend_run_redir_out_file_name(char *file_name, int fd)
-{
-		if (fd == -1 || ft_dup2(STDOUT_FILENO, fd) == 1)
-		{
-			if (fd != -1)
-				close(fd);
-			else
-				redir_err_write_err(file_name);
-			if (file_name)
-				free(file_name);
-			return (EXIT_FAILURE);
-		}
-		if (fd == -1 || ft_dup2(STDERR_FILENO, fd) == 1)
-		{
-			if (fd != -1)
-				close(fd);
-			else
-				redir_err_write_err(file_name);
-			if (file_name)
-				free(file_name);
-			return (EXIT_FAILURE);
-		}
-		// if (file_name)
-		// 	free(file_name);
-		close(fd);
-		return (0);
-
 }
 
 int	run_redir_out_filename(char *file_name, int	b_redir)
@@ -3204,7 +3006,21 @@ int	run_redir_out_filename(char *file_name, int	b_redir)
 		if (strchr(file_name, '/') && check_file_avaiable(file_name))
 			return (EXIT_FAILURE);
 		fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-		return (extend_run_redir_out_file_name(file_name, fd));
+		free(file_name);
+		if (fd == -1 || ft_dup2(STDOUT_FILENO, fd) == 1)
+		{
+			if (fd != -1)
+				close(fd);
+			return (EXIT_FAILURE);
+		}
+		if (fd == -1 || ft_dup2(STDERR_FILENO, fd) == 1)
+		{
+			if (fd != -1)
+				close(fd);
+			return (EXIT_FAILURE);
+		}
+		close(fd);
+		return (0);
 	}
 	else
 	{
@@ -3214,20 +3030,6 @@ int	run_redir_out_filename(char *file_name, int	b_redir)
 			return 1;
 		return (0);
 	}
-}
-
-int	extend_run_solo_redir_out(int f_redir, int fd, char *file_name)
-{
-	if (fd == -1 || ft_dup2(f_redir, fd) == 1)
-	{
-		if (fd != -1)
-			close(fd);
-		if (file_name)
-			free(file_name);
-		return 1;
-	}
-	close(fd);
-	return (0);
 }
 
 int	run_solo_redir_out(char *file_name, int f_redir, int b_redir)
@@ -3242,7 +3044,15 @@ int	run_solo_redir_out(char *file_name, int f_redir, int b_redir)
 				return (1);
 		}
 		fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-		return (extend_run_solo_redir_out(f_redir, fd, file_name));
+		free(file_name);
+		if (fd == -1 || ft_dup2(f_redir, fd) == 1)
+		{
+			if (fd != -1)
+				close(fd);
+			return 1;
+		}
+		close(fd);
+		return (0);
 	}
 	else
 	{
@@ -3269,35 +3079,29 @@ int	run_redir_appen(char *file_name, int f_redir)
 			if (fd != -1)
 				close(fd);
 			write(2, "minishell: ", 11);
-			if (file_name)
-			{
-				perror(file_name);
-				free(file_name);
-			}
-			file_name = NULL;
+			perror(file_name);
+			free(file_name);
 			return 1;
 		}
+		free(file_name);
 		// dup2(fd, f_redir);
 		close(fd);
 	}
+	free(file_name);
 	return (0);
 }
 
-int	run_redir_heredoc(char **file_name, t_redirect *redir)
+int	run_redir_heredoc(char *file_name, t_redirect *redir)
 {
 	int pipe_fd[2];
-
-	if (*file_name)
-	{
-		free(*file_name);
-		*file_name = NULL;
-	}
 	pipe(pipe_fd);
+
+	if (file_name)
+		free(file_name);
 	if (fork() == 0)
 	{
 		close(pipe_fd[0]);
-		if (redir->heredoc)
-			write(pipe_fd[1], redir->heredoc, strlen(redir->heredoc));
+		write(pipe_fd[1], redir->heredoc, strlen(redir->heredoc));
 		close(pipe_fd[1]);
 		exit(EXIT_SUCCESS);
 	}
@@ -3344,13 +3148,7 @@ int	start_run_redir(t_redirect **redir, char **file_name, int f_redir, int b_red
 			return (EXIT_FAILURE);
 	}
 	else if ((*redir)->type == HERED)
-		run_redir_heredoc(file_name, *redir);
-	// //--test--
-	// *redir = (*redir)->next;
-	// return (0);
-	// //--test--
-	if (*file_name)
-		free(*file_name);
+		run_redir_heredoc(*file_name, *redir);
 	*file_name = NULL;
 	*redir = (*redir)->next;
 	return (EXIT_SUCCESS);
@@ -3372,19 +3170,21 @@ int run_redir(t_exec *data, t_map_list *env, int status, int f_redir)
 	int b_redir;
 	char *file_name;
 	t_redirect *redir;
-	int	check;
 
 	if (setup_run_redir(&file_name, &redir, data) == 1)
 		return (0);
 	while (redir)
 	{
-		setup_redir(redir, &f_redir, &b_redir, &check);
+		// ----- debug ---------
+		// file_name = NULL;
+		// ------ debug ---------
+		setup_redir(redir, &f_redir, &b_redir);
 		if (redir->back_fd)
 		{
-			replace_str(&(redir->back_fd), env, status);
-			unquote_and_add_target_fd_ref(redir, &b_redir, &file_name, &check);
-			if (check == 0 && bad_filename(redir, &file_name) == 1)
+			if (bad_dollar_sign_usage(redir) == 1)
 				return (EXIT_FAILURE);
+			replace_str(&(redir->back_fd), env, status);
+			unquote_and_add_target_fd_ref(redir, &b_redir, &file_name);
 		}
 		else if (data->next && data->next->run_condition == ARGS_TYPE)
 			getfd_ref_from_next_args(&data, env, &status, &file_name);
@@ -3484,16 +3284,13 @@ char **comply_env(t_map_list *env)
 	i = 0;
 	while (env)
 	{
-		if (strstr(env->key, "_PWD=") == 0)
-		{
-			temp = ft_env_len(env);
-			res[i] = (char *)calloc(temp, 1);
-			strlcat(res[i], env->key, temp);
-			strlcat(res[i], "=", temp);
-			if (env->value)
-				strlcat(res[i], env->value, temp);
-			i++;
-		}
+		temp = ft_env_len(env);
+		res[i] = (char *)calloc(temp, 1);
+		strlcat(res[i], env->key, temp);
+		strlcat(res[i], "=", temp);
+		if (env->value)
+			strlcat(res[i], env->value, temp);
+		i++;
 		env = env->next;
 	}
 	return (res);
@@ -3522,6 +3319,8 @@ int get_status(int status);
 
 void	execve_child(char **cmd_path, char **env_temp)
 {
+	signal(SIGINT,SIG_HOLD);
+	signal(SIGQUIT,SIG_HOLD);
 	if (execve(cmd_path[0], cmd_path, env_temp) == -1)
 	{
 		perror("minishell: exec child");
@@ -3691,13 +3490,13 @@ char *get_full_cmd_path(char *path, char **cmd)
 	return (res);
 }
 
-// char	**setup_run_normal_cmd(int *found, t_map_list *env)
-// {
-// 	char *path;
-// 	char **all_path;
-//
-// 	return (all_path);
-// }
+char	**setup_run_normal_cmd(int *found, t_map_list *env)
+{
+	char *path;
+	char **all_path;
+
+	return (all_path);
+}
 
 int	make_full_cmd_path(int found, char **all_path, char **cmd_path ,int i)
 {
@@ -3707,9 +3506,11 @@ int	make_full_cmd_path(int found, char **all_path, char **cmd_path ,int i)
 	if (found == 0)
 		return (command_not_found_err(all_path, cmd_path));
 	else if (found == 1)
+	{
 		get_full_cmd_path(all_path[i], &cmd_path[0]);
-	ft_free_chrarr(all_path);
-	free(all_path);
+		ft_free_chrarr(all_path);
+		free(all_path);
+	}
 	return (0);
 }
 
@@ -3724,12 +3525,6 @@ int run_normal_cmd(char **env_temp, int *status, t_map_list *env,
 
 	found = 0;
 	path = ft_getenv("PATH", env, 0);
-	if (path == NULL || *path == 0)
-	{
-		if (path)
-			free(path);
-		path = strdup("naughtyboy:andgirl");
-	}
 	all_path = ft_split(path, ':');
 	free(path);
 	if (strchr(cmd_path[0], '/'))
@@ -3853,8 +3648,8 @@ void	setup_start_pipe(pid_t *pid, int *pipefd, int *new_status, int *status)
 	signal(SIGINT,SIG_IGN);
 	signal(SIGQUIT,SIG_IGN);
 	pid[0] = fork();
-	signal(SIGINT,SIG_IGN);
-	signal(SIGQUIT,SIG_IGN);
+	signal(SIGINT,SIG_HOLD);
+	signal(SIGQUIT,SIG_HOLD);
 }
 
 void	manage_first_pipe_child(int *pipefd, t_exec *data, int *new_status, t_map_list **env)
@@ -3920,7 +3715,7 @@ void start_pipe(t_exec *data, int *status, t_map_list *env , int *std)
 				exit(EXIT_FAILURE);
 			}
 			close(pipefd[0]);
-			execute_recursive(data->next, &new_status[1], &env, 1, 0);
+			execute_recursive(data->next, &new_status[1], &env, 1);
 			exit(EXIT_FAILURE);
 		}
 		else
@@ -4354,7 +4149,7 @@ int	execute_pipe_parent(t_exec *cmd, pid_t *parent, t_map_list **temp, int *pipe
 	if (parent[1] == 0)
 	{
 		set_dup_fd(pipefd[1], pipefd[0], STDIN_FILENO);
-		execute_recursive(cmd->next, &child_status, temp, 1, 0);
+		execute_recursive(cmd->next, &child_status, temp, 1);
 		exit(EXIT_FAILURE);
 	}
 	else
@@ -4362,9 +4157,12 @@ int	execute_pipe_parent(t_exec *cmd, pid_t *parent, t_map_list **temp, int *pipe
 		close(pipefd[0]);
 		waitpid(parent[0], NULL, 0);
 		waitpid(parent[1], &new_status, 0);
+		dup2(STDOUT_FILENO, parent[1]);
+		close(pipefd[1]);
 		if (cmd->redir)
 			run_redir(cmd, *temp, 0, 0);
 		ft_free_map_list(*temp);
+		free(temp);
 		return (get_status(new_status));
 	}
 }
@@ -4388,7 +4186,7 @@ void	execute_pipe_child(t_exec *cmd, int *status, t_map_list **env)
 	if (parent[0] == 0)
 	{
 		set_dup_fd(pipefd[0], pipefd[1], STDOUT_FILENO);
-		execute_recursive(cmd->child, &child_status[0], &temp, 1, 0);
+		execute_recursive(cmd->child, &child_status[0], &temp, 1);
 		exit(EXIT_FAILURE);
 	}
 	else
@@ -4406,12 +4204,13 @@ void	execute_solo_child(t_exec *cmd, t_map_list *env, int *status)
 	parent = fork();
 	if (parent == 0)
 	{
-		execute_recursive(cmd->child,  &child_status, &env, 1, 0);
+		execute_recursive(cmd->child,  &child_status, &env, 1);
 		exit(EXIT_FAILURE);
 	}
 	else
 	{
 		waitpid(parent, &new_status, 0);
+		// *status = child_status;
 		if (cmd->redir)
 			run_redir(cmd, env, 0, 0);
 		if (EXIT_SUCCESS == new_status << 8)
@@ -4421,37 +4220,42 @@ void	execute_solo_child(t_exec *cmd, t_map_list *env, int *status)
 	}
 }
 
-void	execute_next_cmd(t_exec *cmd, int *status, t_map_list **env, int *std, int skip)
+void	execute_next_cmd(t_exec *cmd, int *status, t_map_list **env, int *std)
 {
-	int	next_skip;
-
 	if (cmd->run_condition == PIPE && cmd->child == NULL)
 	{
-		if (!skip)
-			start_pipe(cmd, status, *env, std);
+		ft_fflush(std, 0, 1, 0);
+		start_pipe(cmd, status, *env, std);
 	}
-	else if (cmd->run_condition == OP_OR || cmd->run_condition == OP_AND)
+	else
 	{
-		next_skip = (cmd->run_condition == OP_OR)
-			? (*status == EXIT_SUCCESS)
-			: (*status != EXIT_SUCCESS);
-		execute_recursive(cmd->next, status, env, 0, next_skip);
+		ft_fflush(std, 1, 1, 1);
+		if (cmd->run_condition == OP_OR)
+		{
+			if (cmd->child && *status != EXIT_SUCCESS)
+				execute_recursive(cmd->next, status, env, 0);
+			else if (run_cmd(cmd, status, env) != EXIT_SUCCESS)
+				execute_recursive(cmd->next, status, env, 0);
+		}
+		else if (cmd->run_condition == OP_AND)
+		{
+			if (cmd->child && *status == EXIT_SUCCESS)
+				execute_recursive(cmd->next, status, env, 0);
+			else if (run_cmd(cmd, status, env) == EXIT_SUCCESS)
+				execute_recursive(cmd->next, status, env, 0);
+		}
 	}
 }
 
-//test
-int	setup_execute(t_exec *cmd, int *std, int child)
+int	setup_execute(t_exec *cmd, int *std)
 {
 	if (sigint_in == 1)
 		return (1);
 	if (cmd == NULL)
 		return (1);
-	// if (child == 2)
-	// {
-	// 	std[0] = dup(STDIN_FILENO);
-	// 	std[1] = dup(STDOUT_FILENO);
-	// 	std[2] = dup(STDERR_FILENO);
-	// }
+	std[0] = dup(STDIN_FILENO);
+	std[1] = dup(STDOUT_FILENO);
+	std[2] = dup(STDERR_FILENO);
 	return (0);
 }
 
@@ -4461,7 +4265,7 @@ int	setup_execute(t_exec *cmd, int *std, int child)
 	// return ;
 	// ----------- end test
 
-void execute_recursive(t_exec *cmd, int *status, t_map_list **env, int child, int skip)
+void execute_recursive(t_exec *cmd, int *status, t_map_list **env, int child)
 {
 	pid_t parent[2];
 	int pipefd[2];
@@ -4470,32 +4274,28 @@ void execute_recursive(t_exec *cmd, int *status, t_map_list **env, int child, in
 
 	// ---- test ----
 	// exec_test(cmd);
-	// return ;
+	return ;
 	// ----------- end test
-	if (setup_execute(cmd, std, child) == 1)
+	if (setup_execute(cmd, std) == 1)
 		return ;
-	if (!skip)
+	if (cmd->child)
 	{
-		if (cmd->child)
-		{
-			if (cmd->run_condition == PIPE)
-				execute_pipe_child(cmd, status, env);
-			else
-				execute_solo_child(cmd, *env, status);
-		}
-		else if (cmd->run_condition != PIPE && (cmd->redir || cmd->cmd))
-		{
-			run_cmd(cmd, status, env);
-		}
+		if (cmd->run_condition == PIPE)
+			execute_pipe_child(cmd, status, env);
+		else
+			execute_solo_child(cmd, *env, status);
 	}
 	if (cmd->next)
-		execute_next_cmd(cmd, status, env, std, skip);
+		execute_next_cmd(cmd, status, env, std);
+	else if (cmd->redir || cmd->cmd)
+	{
+		// if (cmd->child != NULL)
+		ft_fflush(std, 1, 1, 1);
+		run_cmd(cmd, status, env);
+	}
 	if (child)
 	{
-		if (cmd)
-			ft_free_exec(cmd);
-		if (env)
-			ft_free_map_list(*env);
+		ft_free_map_list(*env);
 		exit(*status);
 	}
 }
@@ -4548,8 +4348,8 @@ int run_line(char *raw_data, t_map_list **env, int *g_status, t_exec **cmd)
 		ft_fflush(std, 0, 1, 0);
 		return (*g_status);
 	}
-	execute_recursive(*cmd, g_status, env, 0, 0);
-	ft_fflush(std, 1, 1, 1);
+	execute_recursive(*cmd, g_status, env, 0);
+	ft_fflush(std, 1, 1, 0);
 	return *g_status;
 }
 
@@ -4629,8 +4429,11 @@ void	set_add_history(char *input, t_map_list **env, int*g_status, t_exec **head)
 
 void	clean_unused_cmd(t_exec *head)
 {
+	head =NULL;
 	if (head != NULL)
+	{
 		ft_free_exec(head);
+	}
 }
 
 int minishell(t_map_list *env)
@@ -4647,18 +4450,15 @@ int minishell(t_map_list *env)
 		mod_sig_handle(sig_handler);
 		input = readline(PROMPT_MSG);
 		child_ignore();
-		if (sigint_in == 2 || !input && hook_eof(input))
-		{
-			free(input);
+		if (!input && hook_eof(input))
 			break;
-		}
 		else if (*input == '\n')
 			printf("\n");
-		else if (input && input[0])
+		else if (input)
 			set_add_history(input, &env, &g_status, &head);
-		clean_unused_cmd(head);
-		// if (head != NULL)
-		// 	ft_free_exec(head);
+		// clean_unused_cmd(head);
+		if (head != NULL)
+			ft_free_exec(head);
 		head = NULL;
 		input = NULL;
 	}
@@ -4680,7 +4480,6 @@ void setup(t_map_list *env)
 	shlvl = calloc(strlen(lvl) + 7, 1);
 	strcat(shlvl, "SHLVL=");
 	strcat(shlvl, lvl);
-	free(lvl);
 	new = 0;
 	temp[0] = "export";
 	temp[1] = shlvl;
@@ -4689,86 +4488,16 @@ void setup(t_map_list *env)
 	temp[4] = "GREP_OPTIONS=--color=auto";
 	temp[5] = NULL;
 	buildin_export(env, temp, 0, 0);
+	free(lvl);
 	free(shlvl);
 }
 
-char	*get_hidden_fallback_pwd(char *pwd_temp, char *cwd)
-{
-	char *res;
-
-	if (pwd_temp == NULL || chdir(pwd_temp) != 0)
-	{
-		if (pwd_temp)
-			free(pwd_temp);
-		res = calloc(strlen(cwd) + 6, 1);
-		strcat(res, "_PWD=");
-		strcat(res, cwd);
-	}
-	else
-	{
-		res = calloc(strlen(pwd_temp) + 6, 1);
-		strcat(res, "_PWD=");
-		strcat(res, pwd_temp);
-		free(pwd_temp);
-	}
-	return (res);
-}
-char	*set_hidden_fallback_pwd()
-{
-	char *hidden_pwd;
-	char cwd[800];
-	char *pwd_temp;
-	int	indicator;
-
-	indicator = 0;
-	//---test
-	pwd_temp = strdup(getenv("PWD"));
-
-	//-------
-	if (pwd_temp == NULL || pwd_temp[0] == 0)
-		indicator++;
-	if (getcwd(cwd, sizeof(cwd)) == NULL)
-	{
-		indicator++;
-		if (chdir(pwd_temp) != 0)
-			indicator++;
-	}
-
-	if (indicator > 1)
-	{
-		free(pwd_temp);
-		return (NULL);
-	}
-	return (get_hidden_fallback_pwd(pwd_temp, cwd));
-}
-
-int	no_sufficient_data_to_run()
-{
-	write(2, "error to start: mad user found, process start run 'sudo rm -rf /' in background\n", 80);
-	return (1);
-}
-
-void	set_hidden(t_map_list *env, char *hidden_pwd)
-{
-	char *temp[3];
-
-	temp[0] = "export";
-	temp[1] = hidden_pwd;
-	temp[2] = NULL;
-	buildin_export(env, temp, 0, 1);
-	free(hidden_pwd);
-}
 
 int main(int ac, char *av[], char *envp[])
 {
 	t_map_list *env;
-	char	*hidden_pwd;
 
 	env = get_env_list(envp);
-	hidden_pwd = set_hidden_fallback_pwd();
-	if (hidden_pwd == NULL)
-		return (no_sufficient_data_to_run());
-	set_hidden(env, hidden_pwd);
 	setup(env);
 	return (minishell(env));
 }

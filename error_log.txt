@@ -1,0 +1,71 @@
+minishell-3.2$ cat << "" << "" | cat << "" << "" >> $fhbeoifgj
+heredoc>
+==6050==
+==6050== HEAP SUMMARY:
+==6050==     in use at exit: 341,621 bytes in 682 blocks
+==6050==   total heap usage: 4,843 allocs, 4,161 frees, 2,076,352 bytes allocated
+==6050==
+==6050== 4 bytes in 4 blocks are definitely lost in loss record 9 of 152
+==6050==    at 0x100133545: malloc (in /usr/local/Cellar/valgrind/HEAD-6ff08b6/libexec/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==6050==    by 0x100166C44: xmalloc (in /usr/local/Cellar/readline/8.2.7/lib/libreadline.8.2.dylib)
+==6050==    by 0x100143FFA: readline_internal_teardown (in /usr/local/Cellar/readline/8.2.7/lib/libreadline.8.2.dylib)
+==6050==    by 0x100143B18: readline (in /usr/local/Cellar/readline/8.2.7/lib/libreadline.8.2.dylib)
+==6050==    by 0x10000F444: minishell (in ./minishell)
+==6050==    by 0x10000F698: main (in ./minishell)
+==6050==
+==6050== 116 (40 direct, 76 indirect) bytes in 1 blocks are definitely lost in loss record 75 of 152
+==6050==    at 0x100133545: malloc (in /usr/local/Cellar/valgrind/HEAD-6ff08b6/libexec/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==6050==    by 0x100008151: make_new_exec (in ./minishell)
+==6050==    by 0x100008B12: get_exec_data (in ./minishell)
+==6050==    by 0x10000BAA0: parser (in ./minishell)
+==6050==    by 0x10000F1E5: run_line (in ./minishell)
+==6050==    by 0x10000F3A5: set_add_history (in ./minishell)
+==6050==    by 0x10000F4C2: minishell (in ./minishell)
+==6050==    by 0x10000F698: main (in ./minishell)
+==6050==
+==6050== LEAK SUMMARY:
+==6050==    definitely lost: 44 bytes in 5 blocks
+==6050==    indirectly lost: 76 bytes in 4 blocks
+==6050==      possibly lost: 0 bytes in 0 blocks
+==6050==    still reachable: 327,635 bytes in 512 blocks
+==6050==         suppressed: 13,866 bytes in 161 blocks
+==6050== Reachable blocks (those to which a pointer was found) are not shown.
+==6050== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==6050==
+==6050== For lists of detected and suppressed errors, rerun with: -s
+==6050== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 10 from 10)
+heredoc>
+minishell-3.2$ ==14681== Warning: noted but unhandled ioctl 0x2000746e with no size/direction hints.
+==14681==    This could cause spurious value errors to appear.
+==14681==    See README_MISSING_SYSCALL_OR_IOCTL for guidance on writing a proper wrapper.
+minishell-3.2$ ==14681== Warning: noted but unhandled ioctl 0x2000746e with no size/direction hints.
+==14681==    This could cause spurious value errors to appear.
+==14681==    See README_MISSING_SYSCALL_OR_IOCTL for guidance on writing a proper wrapper.
+
+minishell-3.2$ ==14681== Warning: noted but unhandled ioctl 0x2000746e with no size/direction hints.
+==14681==    This could cause spurious value errors to appear.
+==14681==    See README_MISSING_SYSCALL_OR_IOCTL for guidance on writing a proper wrapper
+
+❯ valgrind --leak-check=full --show-leak-kinds=all ./minishell75 bytes in 1 blocks are definitely lost in loss record 38 of 114
+==17740==    at 0x100133BA0: calloc (in /usr/local/Cellar/valgrind/HEAD-6ff08b6/libexec/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==17740==    by 0x100004375: manage_string_space (in ./minishell)
+==17740==    by 0x10000BA04: parser (in ./minishell)
+==17740==    by 0x10000F1C5: run_line (in ./minishell)
+==17740==    by 0x10000F385: set_add_history (in ./minishell)
+==17740==    by 0x10000F4B4: minishell (in ./minishell)
+==17740==    by 0x10000F698: mai
+
+==18127== 1,080 bytes in 45 blocks are still reachable in loss record 102 of 148
+==18127==    at 0x100133545: malloc (in /usr/local/Cellar/valgrind/HEAD-6ff08b6/libexec/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==18127==    by 0x100003FB9: ft_add_maplist (in ./minishell)
+==18127==    by 0x1000040B5: get_env_list (in ./minishell)
+==18127==    by 0x10000F682: main (in ./minishell)
+==1812
+
+==18127== 917 bytes in 43 blocks are still reachable in loss record 91 of 148
+==18127==    at 0x100133545: malloc (in /usr/local/Cellar/valgrind/HEAD-6ff08b6/libexec/valgrind/vgpreload_memcheck-amd64-darwin.so)
+==18127==    by 0x10046FCE5: strdup (in /usr/lib/system/libsystem_c.dylib)
+==18127==    by 0x100003FEC: ft_add_maplist (in ./minishell)
+==18127==    by 0x1000040B5: get_env_list (in ./minishell)
+==18127==    by 0x10000F682: main (in ./minishell)
+
